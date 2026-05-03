@@ -2,6 +2,30 @@ const { execSync, spawn } = require('child_process');
 const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
+
+// ==========================================
+// CẤU HÌNH NHẬN THÔNG BÁO QUA TELEGRAM BOT
+// ==========================================
+const TELEGRAM_BOT_TOKEN = ''; // Ví dụ: '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ'
+const TELEGRAM_CHAT_ID = '';   // Ví dụ: '123456789'
+
+function sendTelegramNotification(message) {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+    
+    const data = JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' });
+    const options = {
+        hostname: 'api.telegram.org',
+        path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': data.length }
+    };
+    
+    const req = https.request(options, (res) => {});
+    req.on('error', (e) => console.error("Lỗi gửi Telegram:", e));
+    req.write(data);
+    req.end();
+}
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -111,20 +135,26 @@ async function main() {
                 '-w', gpuConfig.w  
             ];
 
-        // Khởi chạy tiến trình đào
+        // Khởi chạy tiến trình đào (Chặn stdout để đọc kết quả)
         const profanityProcess = spawn(PROFANITY_EXEC, args, { 
             cwd: PROFANITY_DIR, 
             stdio: ['inherit', 'pipe', 'inherit'],
             env: { ...process.env, MIN_SCORE: minScore.toString() }
         });
 
+        // Bắt đầu đọc kết quả in ra từ C++
         profanityProcess.stdout.on('data', (data) => {
             const output = data.toString();
-            process.stdout.write(output); // Vẫn in ra màn hình Terminal
+            process.stdout.write(output); // Vẫn in ra terminal như bình thường
             
-            // Nếu dòng output chứa kết quả (có chữ Private:) thì lưu vào file
-            if (output.includes("Private:")) {
-                fs.appendFileSync(path.join(__dirname, 'found_wallets.txt'), output);
+            // Nếu phát hiện ví được in ra, gửi qua Telegram
+            if (output.includes('Private:')) {
+                const lines = output.split('\n');
+                for (const line of lines) {
+                    if (line.includes('Private:') && line.includes('Address:')) {
+                        sendTelegramNotification(`🎉 **Đã đào được ví đuôi ${suffix}!**\n\n\`${line.trim()}\``);
+                    }
+                }
             }
         });
 
