@@ -68,6 +68,10 @@ async function main() {
             process.exit(1);
         }
     } else {
+        console.log("[*] Đang cập nhật mã nguồn C++...");
+        try {
+            execSync('cd profanity2 && make', { stdio: 'inherit' });
+        } catch (e) {}
         console.log("[✅] Profanity2 đã sẵn sàng.\n");
     }
 
