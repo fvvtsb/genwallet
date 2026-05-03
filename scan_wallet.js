@@ -63,6 +63,61 @@ function getOptimalGPUConfig() {
     return { I: optimalI.toString(), w: optimalW.toString() };
 }
 
+function runMiner(pubKey, suffix) {
+    const pattern = 'X'.repeat(40 - suffix.length) + suffix;
+    const minScore = Math.ceil(suffix.length / 2);
+
+    // Tự động đo lường và cấu hình GPU
+    const gpuConfig = getOptimalGPUConfig();
+    console.log(`\n[🚀] Đang kích hoạt GPU tìm đuôi '${suffix}' (Tự động phân bổ VRAM: -I ${gpuConfig.I}, -w ${gpuConfig.w})...`);
+    console.log("-----------------------------------------------------");
+    
+    // Cấu hình tham số cho profanity2
+    const args = [
+        '--matching', pattern,
+        '-n',
+        '-z', pubKey,
+        '-I', gpuConfig.I, 
+        '-w', gpuConfig.w  
+    ];
+
+    // Khởi chạy tiến trình đào (Chặn stdout để đọc kết quả)
+    const profanityProcess = spawn(PROFANITY_EXEC, args, { 
+        cwd: PROFANITY_DIR, 
+        stdio: ['inherit', 'pipe', 'inherit'],
+        env: { ...process.env, MIN_SCORE: minScore.toString() }
+    });
+
+    // Bắt đầu đọc kết quả in ra từ C++
+    profanityProcess.stdout.on('data', (data) => {
+        const output = data.toString();
+        process.stdout.write(output); // Vẫn in ra terminal như bình thường
+        
+        // Nếu phát hiện ví được in ra, gửi qua Telegram
+        if (output.includes('Private:')) {
+            const lines = output.split('\n');
+            for (const line of lines) {
+                if (line.includes('Private:') && line.includes('Address:')) {
+                    sendTelegramNotification(`🎉 **Đã đào được ví đuôi ${suffix}!**\n\n\`${line.trim()}\``);
+                }
+            }
+        }
+    });
+
+    profanityProcess.on('close', (code) => {
+        console.log(`\n[*] Tiến trình kết thúc (Mã: ${code})`);
+        console.log("-----------------------------------------------------");
+        console.log("Nếu bạn đã tìm thấy Modifier, hãy mang nó về máy cá nhân (offline) để thực hiện phép toán cộng với Seed Private Key ban đầu.");
+        if (rl) rl.close();
+    });
+    
+    // Bắt lỗi nếu không chạy được
+    profanityProcess.on('error', (err) => {
+         console.error("\n❌ Lỗi khi khởi chạy Profanity2:", err.message);
+         if (rl) rl.close();
+    });
+}
+
 async function main() {
     console.log("=====================================================");
     console.log("   Săn Ví BEP20 Đuôi 88888888 Bằng Public Key (GPU)");
@@ -99,6 +154,16 @@ async function main() {
         console.log("[✅] Profanity2 đã sẵn sàng.\n");
     }
 
+    // Nếu chạy qua pm2 (truyền tham số qua dòng lệnh)
+    const argPubKey = process.argv[2];
+    const argSuffix = process.argv[3];
+    
+    if (argPubKey && argSuffix) {
+        console.log(`[+] Nhận tham số tự động từ dòng lệnh: Đuôi '${argSuffix}'`);
+        runMiner(argPubKey.trim(), argSuffix.trim().toLowerCase());
+        return;
+    }
+
     rl.question("Hãy nhập Seed Public Key của bạn (128 ký tự Hex, KHÔNG có tiền tố 0x04):\n> ", (pubKey) => {
         pubKey = pubKey.trim();
         
@@ -118,58 +183,7 @@ async function main() {
                 process.exit(1);
             }
 
-            const pattern = 'X'.repeat(40 - suffix.length) + suffix;
-            const minScore = Math.ceil(suffix.length / 2);
-
-            // Tự động đo lường và cấu hình GPU
-            const gpuConfig = getOptimalGPUConfig();
-            console.log(`\n[🚀] Đang kích hoạt GPU tìm đuôi '${suffix}' (Tự động phân bổ VRAM: -I ${gpuConfig.I}, -w ${gpuConfig.w})...`);
-            console.log("-----------------------------------------------------");
-            
-            // Cấu hình tham số cho profanity2
-            const args = [
-                '--matching', pattern,
-                '-n',
-                '-z', pubKey,
-                '-I', gpuConfig.I, 
-                '-w', gpuConfig.w  
-            ];
-
-        // Khởi chạy tiến trình đào (Chặn stdout để đọc kết quả)
-        const profanityProcess = spawn(PROFANITY_EXEC, args, { 
-            cwd: PROFANITY_DIR, 
-            stdio: ['inherit', 'pipe', 'inherit'],
-            env: { ...process.env, MIN_SCORE: minScore.toString() }
-        });
-
-        // Bắt đầu đọc kết quả in ra từ C++
-        profanityProcess.stdout.on('data', (data) => {
-            const output = data.toString();
-            process.stdout.write(output); // Vẫn in ra terminal như bình thường
-            
-            // Nếu phát hiện ví được in ra, gửi qua Telegram
-            if (output.includes('Private:')) {
-                const lines = output.split('\n');
-                for (const line of lines) {
-                    if (line.includes('Private:') && line.includes('Address:')) {
-                        sendTelegramNotification(`🎉 **Đã đào được ví đuôi ${suffix}!**\n\n\`${line.trim()}\``);
-                    }
-                }
-            }
-        });
-
-        profanityProcess.on('close', (code) => {
-            console.log(`\n[*] Tiến trình kết thúc (Mã: ${code})`);
-            console.log("-----------------------------------------------------");
-            console.log("Nếu bạn đã tìm thấy Modifier, hãy mang nó về máy cá nhân (offline) để thực hiện phép toán cộng với Seed Private Key ban đầu.");
-            rl.close();
-        });
-        
-        // Bắt lỗi nếu không chạy được
-        profanityProcess.on('error', (err) => {
-             console.error("\n❌ Lỗi khi khởi chạy Profanity2:", err.message);
-             rl.close();
-        });
+            runMiner(pubKey, suffix);
         });
     });
 }
