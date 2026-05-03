@@ -60,7 +60,9 @@ async function main() {
         const args = [
             '--matching', 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX88888888',
             '-n',
-            '-z', pubKey
+            '-z', pubKey,
+            '-I', '32768', // Tăng khối lượng công việc mỗi mẻ
+            '-w', '256'    // Tăng kích thước Work Group cho NVIDIA
         ];
 
         // Khởi chạy tiến trình đào
