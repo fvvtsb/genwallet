@@ -7,8 +7,8 @@ const https = require('https');
 // ==========================================
 // CẤU HÌNH NHẬN THÔNG BÁO QUA TELEGRAM BOT
 // ==========================================
-const TELEGRAM_BOT_TOKEN = ''; // Ví dụ: '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ'
-const TELEGRAM_CHAT_ID = '';   // Ví dụ: '123456789'
+const TELEGRAM_BOT_TOKEN = '8632183036:AAFO5RvN525bwgG-HwfK_zN07NHGRiSQjuM';
+const TELEGRAM_CHAT_ID = '6549284982';
 
 function sendTelegramNotification(message) {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
