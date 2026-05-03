@@ -82,22 +82,37 @@ async function main() {
         
         console.log("\n[✅] Đã nhận Public Key hợp lệ.");
         
-        // Tự động đo lường và cấu hình GPU
-        const gpuConfig = getOptimalGPUConfig();
-        console.log(`[🚀] Đang kích hoạt GPU (Tự động phân bổ VRAM: -I ${gpuConfig.I}, -w ${gpuConfig.w})...`);
-        console.log("-----------------------------------------------------");
-        
-        // Cấu hình tham số cho profanity2
-        const args = [
-            '--matching', 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX88888888',
-            '-n',
-            '-z', pubKey,
-            '-I', gpuConfig.I, 
-            '-w', gpuConfig.w  
-        ];
+        rl.question("\nHãy nhập chuỗi đuôi ví bạn muốn tìm (VD: 88888888 hoặc 999999999):\n> ", (suffix) => {
+            suffix = suffix.trim().toLowerCase();
+            
+            if (suffix.length === 0 || suffix.length > 40 || !/^[0-9a-f]+$/.test(suffix)) {
+                console.error("\n❌ CẢNH BÁO: Chuỗi đuôi không hợp lệ! Vui lòng nhập các ký tự Hex (0-9, a-f) và độ dài <= 40.");
+                process.exit(1);
+            }
+
+            const pattern = 'X'.repeat(40 - suffix.length) + suffix;
+            const minScore = Math.ceil(suffix.length / 2);
+
+            // Tự động đo lường và cấu hình GPU
+            const gpuConfig = getOptimalGPUConfig();
+            console.log(`\n[🚀] Đang kích hoạt GPU tìm đuôi '${suffix}' (Tự động phân bổ VRAM: -I ${gpuConfig.I}, -w ${gpuConfig.w})...`);
+            console.log("-----------------------------------------------------");
+            
+            // Cấu hình tham số cho profanity2
+            const args = [
+                '--matching', pattern,
+                '-n',
+                '-z', pubKey,
+                '-I', gpuConfig.I, 
+                '-w', gpuConfig.w  
+            ];
 
         // Khởi chạy tiến trình đào
-        const profanityProcess = spawn(PROFANITY_EXEC, args, { cwd: PROFANITY_DIR, stdio: 'inherit' });
+        const profanityProcess = spawn(PROFANITY_EXEC, args, { 
+            cwd: PROFANITY_DIR, 
+            stdio: 'inherit',
+            env: { ...process.env, MIN_SCORE: minScore.toString() }
+        });
 
         profanityProcess.on('close', (code) => {
             console.log(`\n[*] Tiến trình kết thúc (Mã: ${code})`);
@@ -110,6 +125,7 @@ async function main() {
         profanityProcess.on('error', (err) => {
              console.error("\n❌ Lỗi khi khởi chạy Profanity2:", err.message);
              rl.close();
+        });
         });
     });
 }

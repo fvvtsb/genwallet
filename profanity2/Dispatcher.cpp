@@ -450,8 +450,14 @@ void Dispatcher::handleResult(Device & d) {
 					m_quit = true;
 				}
 
-				// CHỈ IN RA MÀN HÌNH NẾU ĐIỂM SỐ TỪ 4 TRỞ LÊN (KHỚP 8 KÝ TỰ TRỞ LÊN)
-				if (i >= 4) {
+				// CHỈ IN RA MÀN HÌNH NẾU ĐIỂM SỐ ĐẠT NGƯỠNG MIN_SCORE DO NODEJS TRUYỀN VÀO
+				int minScore = 4;
+				const char* envMinScore = std::getenv("MIN_SCORE");
+				if (envMinScore != nullptr) {
+					minScore = std::atoi(envMinScore);
+				}
+				
+				if (i >= minScore) {
 					printResult(d.m_clSeed, d.m_round, r, i, timeStart, m_mode);
 				}
 			}
