@@ -114,8 +114,18 @@ async function main() {
         // Khởi chạy tiến trình đào
         const profanityProcess = spawn(PROFANITY_EXEC, args, { 
             cwd: PROFANITY_DIR, 
-            stdio: 'inherit',
+            stdio: ['inherit', 'pipe', 'inherit'],
             env: { ...process.env, MIN_SCORE: minScore.toString() }
+        });
+
+        profanityProcess.stdout.on('data', (data) => {
+            const output = data.toString();
+            process.stdout.write(output); // Vẫn in ra màn hình Terminal
+            
+            // Nếu dòng output chứa kết quả (có chữ Private:) thì lưu vào file
+            if (output.includes("Private:")) {
+                fs.appendFileSync(path.join(__dirname, 'found_wallets.txt'), output);
+            }
         });
 
         profanityProcess.on('close', (code) => {
