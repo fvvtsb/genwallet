@@ -21,8 +21,9 @@ async function main() {
         console.log("[*] Không tìm thấy Profanity2. Đang tiến hành cài đặt và biên dịch...");
         try {
             // Cài đặt các thư viện cần thiết cho việc biên dịch C++ và OpenCL
-            console.log("[*] Đang cài đặt thư viện hệ thống (cần quyền root/sudo)...");
+            console.log("[*] Đang cài đặt thư viện hệ thống và cấu hình OpenCL (cần quyền root/sudo)...");
             execSync('apt-get update && apt-get install -y ocl-icd-opencl-dev gcc g++ make git', { stdio: 'inherit' });
+            execSync('mkdir -p /etc/OpenCL/vendors && echo "libnvidia-opencl.so.1" > /etc/OpenCL/vendors/nvidia.icd', { stdio: 'inherit' });
             
             if (!fs.existsSync(PROFANITY_DIR)) {
                 console.log("[*] Đang clone mã nguồn từ 1inch/profanity2...");
