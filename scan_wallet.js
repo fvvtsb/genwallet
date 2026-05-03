@@ -11,6 +11,34 @@ const rl = readline.createInterface({
 const PROFANITY_DIR = path.join(__dirname, 'profanity2');
 const PROFANITY_EXEC = path.join(PROFANITY_DIR, 'profanity2.x64');
 
+// Hàm tự động tính toán thông số tối ưu dựa trên VRAM của GPU NVIDIA
+function getOptimalGPUConfig() {
+    let optimalI = 16384; // Mặc định
+    let optimalW = 64;    // Mặc định
+    try {
+        // Lấy dung lượng VRAM của GPU đầu tiên (tính bằng MB)
+        const vramStr = execSync('nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits', { encoding: 'utf8' }).trim();
+        const vramMB = parseInt(vramStr.split('\n')[0]);
+        if (!isNaN(vramMB)) {
+            // Công thức: 1.7GB VRAM tương đương với Inverse Multiple 32768
+            // Dành 2GB cho OS, dùng 80% dung lượng còn lại cho Profanity2
+            const usableVRAM = (vramMB - 2000) * 0.8;
+            if (usableVRAM > 0) {
+                const calculatedI = Math.floor((usableVRAM / 1700) * 32768);
+                // Giới hạn max là 262144 (~13.6GB VRAM) để tránh tràn bộ nhớ
+                optimalI = Math.min(262144, Math.max(16384, calculatedI));
+                
+                // Làm tròn về bội số của 16384
+                optimalI = Math.floor(optimalI / 16384) * 16384;
+            }
+            optimalW = 256; // Tối ưu mặc định cho NVIDIA
+        }
+    } catch (e) {
+        // Bỏ qua nếu không phải NVIDIA hoặc bị lỗi lệnh
+    }
+    return { I: optimalI.toString(), w: optimalW.toString() };
+}
+
 async function main() {
     console.log("=====================================================");
     console.log("   Săn Ví BEP20 Đuôi 88888888 Bằng Public Key (GPU)");
@@ -53,7 +81,10 @@ async function main() {
         }
         
         console.log("\n[✅] Đã nhận Public Key hợp lệ.");
-        console.log("[🚀] Đang kích hoạt GPU để tìm kiếm địa chỉ kết thúc bằng 88888888...\n");
+        
+        // Tự động đo lường và cấu hình GPU
+        const gpuConfig = getOptimalGPUConfig();
+        console.log(`[🚀] Đang kích hoạt GPU (Tự động phân bổ VRAM: -I ${gpuConfig.I}, -w ${gpuConfig.w})...`);
         console.log("-----------------------------------------------------");
         
         // Cấu hình tham số cho profanity2
@@ -61,8 +92,8 @@ async function main() {
             '--matching', 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX88888888',
             '-n',
             '-z', pubKey,
-            '-I', '32768', // Tăng khối lượng công việc mỗi mẻ
-            '-w', '256'    // Tăng kích thước Work Group cho NVIDIA
+            '-I', gpuConfig.I, 
+            '-w', gpuConfig.w  
         ];
 
         // Khởi chạy tiến trình đào
