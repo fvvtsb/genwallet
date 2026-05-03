@@ -89,17 +89,22 @@ function runMiner(pubKey, suffix) {
     });
 
     // Bắt đầu đọc kết quả in ra từ C++
+    let outputBuffer = '';
     profanityProcess.stdout.on('data', (data) => {
-        const output = data.toString();
-        process.stdout.write(output); // Vẫn in ra terminal như bình thường
+        const chunk = data.toString();
+        process.stdout.write(chunk); // Vẫn in ra terminal như bình thường
         
-        // Nếu phát hiện ví được in ra, gửi qua Telegram
-        if (output.includes('Private:')) {
-            const lines = output.split('\n');
-            for (const line of lines) {
-                if (line.includes('Private:') && line.includes('Address:')) {
-                    sendTelegramNotification(`🎉 **Đã đào được ví đuôi ${suffix}!**\n\n\`${line.trim()}\``);
-                }
+        outputBuffer += chunk;
+        
+        // Tách các dòng hoàn chỉnh (kết thúc bằng \n)
+        let lines = outputBuffer.split('\n');
+        
+        // Dòng cuối cùng có thể chưa hoàn chỉnh, giữ lại trong buffer
+        outputBuffer = lines.pop();
+        
+        for (const line of lines) {
+            if (line.includes('Private:') && line.includes('Address:')) {
+                sendTelegramNotification(`🎉 **Đã đào được ví đuôi ${suffix}!**\n\n\`${line.trim()}\``);
             }
         }
     });

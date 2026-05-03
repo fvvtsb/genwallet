@@ -141,6 +141,9 @@ std::string getDeviceCacheFilename(cl_device_id & d, const size_t & inverseSize)
 }
 
 int main(int argc, char * * argv) {
+	// Tắt hoàn toàn bộ đệm của stdout để đảm bảo dữ liệu được xuất ra ngay lập tức
+	setvbuf(stdout, NULL, _IONBF, 0);
+
 	// THIS LINE WILL LEAD TO A COMPILE ERROR. THIS TOOL SHOULD NOT BE USED, SEE README.
 
 	// ^^ Commented previous line and excluded private key generation out of scope of this project,
